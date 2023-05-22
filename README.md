@@ -478,22 +478,53 @@ After build the pahole, make sure pahole in your `$PATH`
 #### 4. Build sched_ext kernel
 config options we need to enable `sched_ext` feature:
 ```
-CONFIG_DEBUG_INFO_BTF=y  
-CONFIG_PAHOLE_HAS_SPLIT_BTF=y  
-CONFIG_PAHOLE_HAS_BTF_TAG=y  
-CONFIG_SCHED_CLASS_EXT=y  
-CONFIG_BPF_SYSCALL=y  
-CONFIG_BPF_JIT=y  
-CONFIG_9P_FS=y  
-CONFIG_NET_9P=y  
-CONFIG_NET_9P_FD=y  
+CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_PAHOLE_HAS_SPLIT_BTF=y
+CONFIG_PAHOLE_HAS_BTF_TAG=y
+CONFIG_SCHED_CLASS_EXT=y
+CONFIG_SCHED_DEBUG=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_BPF_JIT=y
+### 9P_FS is used by osandov-linux to mount the custom build directory from the hostmachine
+CONFIG_9P_FS=y
+CONFIG_NET_9P=y
+CONFIG_NET_9P_FD=y
 CONFIG_NET_9P_VIRTIO=y
 ```
 
 Creates config. might have to set some config options above. You may use `make menuconfig`
 ```shellsession
-$ make CC=clang LD=ld.lld LLVM=1 olddefconfig
-$ make CC=clang LD=ld.lld LLVM=1 -j$(nproc)
+$ make CC=clang-17 LD=ld.lld LLVM=1 menuconfig
+$ make CC=clang-17 LD=ld.lld LLVM=1 olddefconfig
+$ make CC=clang-17 LD=ld.lld LLVM=1 -j$(nproc)
+```
+#### 5. Build scx_samples
+To build the userspace scheduler "Atropos," you need to use rustup nightly. Visit [link](https://rust-lang.github.io/rustup/concepts/channels.html#channels) to install the Rustup toolchain.
+
+```shellsession
+$ cd tools/sched_ext 
+$ make CC=clang-17 LD=ld.lld LLVM=1 -j$(nproc)
+```
+
+#### 6. Setup a VM for the sched_ext kernel.
+In this memo, I will use [osantov-linux](https://github.com/osandov/osandov-linux), the tool is very handy for running a custom build kernel. visit the repository for details.
+
+```shellsession
+$ vm.py create -c 4 -m 8192 -s 50G <vm name>
+$ vm.py archinstall <vm name>
+$ kconfig.py <path to osandov-linux>/configs/vmpy.fragment
+$ vm.py run -k $PWD -- <vm name>
+```
+
+And then run them from the VM by executing the executable binaries on the tool/sched_ext:
+
+```shellsession
+/usr/lib/modules/<custom build kernel path>/build/tools/sched_ext/scx_example_simple
+local=0 global=0
+local=7 global=4
+local=10 global=6
+EXIT: BPF scheduler unregistered
 ```
 
 ## Play with userspace scheduler!
