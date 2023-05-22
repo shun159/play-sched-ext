@@ -384,6 +384,61 @@ A task is not tied to its `runqueue` while enqueued. This decouples CPU select
 	 */
 	char name[SCX_OPS_NAME_LEN];
 ```
+
+### Writing a userspace application
+
+`sched_ext` uses BPF [struct_ops](https://lwn.net/Articles/809092/) features to define a structure which exports function callback and flags to BPF program that wish to implement scheduling policies. The struct_ops structure exported by `sched_ext` is `struct sched_ext_ops`, and is conceptually similar to `struct sched_class`.  So, need to load an application as a `struct_ops`. Let's look at the example program:
+
+```c
+int main(int argc, char **argv)
+{
+	struct scx_example_simple *skel;
+	struct bpf_link *link;
+	u32 opt;
+
+	signal(SIGINT, sigint_handler);
+	signal(SIGTERM, sigint_handler);
+
+	libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+
+	skel = scx_example_simple__open();
+	assert(skel);
+
+	while ((opt = getopt(argc, argv, "fph")) != -1) {
+		switch (opt) {
+		case 'f':
+			skel->rodata->fifo_sched = true;
+			break;
+		case 'p':
+			skel->rodata->switch_partial = true;
+			break;
+		default:
+			fprintf(stderr, help_fmt, basename(argv[0]));
+			return opt != 'h';
+		}
+	}
+
+	assert(!scx_example_simple__load(skel));
+
+	link = bpf_map__attach_struct_ops(skel->maps.simple_ops);
+	assert(link);
+
+	while (!exit_req && !uei_exited(&skel->bss->uei)) {
+		u64 stats[2];
+
+		read_stats(skel, stats);
+		printf("local=%lu global=%lu\n", stats[0], stats[1]);
+		fflush(stdout);
+		sleep(1);
+	}
+
+	bpf_link__destroy(link);
+	uei_print(&skel->bss->uei);
+	scx_example_simple__destroy(skel);
+	return 0;
+}
+```
+
 ## Getting started
 To be updated
 
