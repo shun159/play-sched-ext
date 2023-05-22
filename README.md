@@ -1,7 +1,6 @@
 Learning BPF extensible scheduler class (a.k.a sched-ext)
 ---
 
-## Overview
 <[The extensible scheduler class](https://lwn.net/Articles/922405/)>
 The core idea behind BPF is that it allows programs to be loaded into the kernel from user space at runtime; using BPF for scheduling has the potential to enable significantly different scheduling behavior than is seen in Linux systems now. The ability to write scheduling policies in BPF will greatly lowers the difficulty of experimenting with new approaches to scheduling.
 
@@ -57,7 +56,7 @@ A task is not tied to its `runqueue` while enqueued. This decouples CPU select
 
 ### Scheduling Cycle
 
-![[Pasted image 20230522141053.png]]
+![BPF Scheduling](https://github.com/shun159/play-sched-ext/blob/main/sched-ext_BPF_Scheduling.png "png")
 
 Scheduling Cycle
 
