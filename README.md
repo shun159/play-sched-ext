@@ -438,9 +438,63 @@ int main(int argc, char **argv)
 	return 0;
 }
 ```
+## Getting Started
 
-## Getting started
-To be updated
+#### 1. checkout the sched_ext repo from github:
+```
+git clone https://github.com/sched-ext/sched_ext
+```
+
+#### 2. checkout and build the latest clang:
+```shellsession
+$ yay -S cmake ninja
+$ git clone https://github.com/llvm/llvm-project.git llvm-project
+$ mkdir -p llvm-project/build; cd llvm-project/build
+$ cmake \  
+	-G Ninja \  
+	-DLLVM_TARGETS_TO_BUILD="BPF;X86" \  
+	-DCMAKE_INSTALL_PREFIX="/$HOME/llvm/$(date +%Y%m%d)" \  
+	-DBUILD_SHARED_LIBS=OFF \  
+	-DLIBCLANG_BUILD_STATIC=ON \  
+	-DCMAKE_BUILD_TYPE=Release \  
+	-DLLVM_ENABLE_TERMINFO=OFF \  
+	-DLLVM_ENABLE_PROJECTS="clang;lld" \  
+	../llvm
+$ ninja install -j$(nproc)
+$ ln -sf /$HOME/llvm/$(date +%Y%m%d) /$HOME/llvm/latest
+```
+After build the clang, make sure the `$HOME/llvm/latest` in your `$PATH`
+
+#### 3. Download and build the latest pahole:
+```shellsession
+$ cd /data/users/$USER  
+$ git clone https://git.kernel.org/pub/scm/devel/pahole/pahole.git
+$ mkdir -p pahole/build; cd pahole/build  
+$ cmake -G Ninja ../  
+$ ninja
+```
+After build the pahole, make sure pahole in your `$PATH`
+
+#### 4. Build sched_ext kernel
+config options we need to enable `sched_ext` feature:
+```
+CONFIG_DEBUG_INFO_BTF=y  
+CONFIG_PAHOLE_HAS_SPLIT_BTF=y  
+CONFIG_PAHOLE_HAS_BTF_TAG=y  
+CONFIG_SCHED_CLASS_EXT=y  
+CONFIG_BPF_SYSCALL=y  
+CONFIG_BPF_JIT=y  
+CONFIG_9P_FS=y  
+CONFIG_NET_9P=y  
+CONFIG_NET_9P_FD=y  
+CONFIG_NET_9P_VIRTIO=y
+```
+
+Creates config. might have to set some config options above. You may use `make menuconfig`
+```shellsession
+$ make CC=clang LD=ld.lld LLVM=1 olddefconfig
+$ make CC=clang LD=ld.lld LLVM=1 -j$(nproc)
+```
 
 ## Play with userspace scheduler!
 To be updated
