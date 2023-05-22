@@ -56,9 +56,22 @@ A task is not tied to its `runqueue` while enqueued. This decouples CPU select
 
 ### Scheduling Cycle
 
-![BPF Scheduling](https://github.com/shun159/play-sched-ext/blob/main/sched-ext_BPF_Scheduling.png "png")
+<[BPF_at_IETF116.pdf](https://github.com/IETF-Hackathon/ietf116-project-presentations/blob/main/BPF_at_IETF116.pdf)>
+![sched_ext: Flow Chart](https://github.com/shun159/play-sched-ext/blob/main/sched-ext_BPF_Scheduling.png?raw=true)
 
-Scheduling Cycle
+1. When a task is waking up. `ops.select_cpu()` is the first operation invoked. this serves two purposes. First, CPU selection optimization hint. Second, waking up the selected CPU if idle.
+2. Once the target CPU is selected, `ops.enqueue()` is invoked. It can make one of the following decisions:
+	1. Immediately dispatch the task to either the global or local DSQ by calling `scx_bpf_dispatch()` with `SCX_DSQ_GLOBAL` or `SCX_DSQ_LOCAL`, respectively.
+	2. Immediately dispatch the task to a custom DSQ by calling `scx_bpf_dispatch()` with a DSQ ID which is smaller than $2^{63}$.
+	3. Queue the task on the BPF side.
+3. When a CPU is ready to schedule, it first looks at its local DSQ. if empty, it then looks at the global DSQ. If there still isn't a task to run, `ops.dispatch()` is invoked.
+	1. `scx_bpf_dispatch()` dispatches a task to a DSQ
+	2. `scx_bpf_comsume()` transfers a task from the specified non-local DSQ to the dispatching DSQ.
+4.  After `ops.dispatch()` returns, if there are tasks in the local DSQ, the CPU runs the first one.
+	1. Try to consume the global DSQ. If successful, run the task
+	2. If `ops.dispatch()` has dispatched any tasks, retry (3).
+	3. If the previous task is an SCX task and still runnable, keep executing it
+	4. idle
 
 ## Getting started
 To be updated
