@@ -10,7 +10,7 @@ The core idea behind BPF is that it allows programs to be loaded into the kernel
 
 `scx_bpf_switch_all()`, a new kfunc call added in the patch, that BPF scheduler can call from `ops.init()` to switch all `SCHED_NORMAL`, `SCHED_BATCH` and `SCHED_IDLE` tasks into `sched_ext`. This has the benefit that the scheduler swaps are "transpant" to the users and applications. CFS is not being used when `scx_bpf_switch_all()` is used.
 
-#### Basics
+### Basics
 Userspace can implement an arbitrary BPF scheduler by loading a set of BPF programs that implement `struct sched_ext_ops`. The only mandatory field is `ops.name` which must be a valid BPF object name. All operations are optional. The following example is showing a minimal global FIFO scheduler.
 
 ```C
@@ -44,7 +44,7 @@ Userspace can implement an arbitrary BPF scheduler by loading a set of BPF progr
     };
 ```
 
-#### Dispatch Queues
+### Dispatch Queues
 To bridge the workflow imbalance between the scheduler core and `sched_ext_ops` callbacks, `sched_ext` uses simple FIFOs called **dispatch queues(DSQ's)**. By default, there is one global dsq (`SCX_DSQ_GLOBAL`) and one local per-CPU dsq (`SCX_DSQ_LOCAL`). `SCX_DSQ_GLOBAL` is provided for convenience and need not be used by a scheduler that doesn't require it. `SCX_DSQ_LOCAL` is the per-CPU FIFO that `sched_ext` fetches a task from the corresponding scheduling queue and assigns the CPU to it. The BPF scheduler can manage an arbitrary number of dsq's using `scx_bpf_create_dsq()` and `scx_bpf_destroy_dsq()`.
 
 A CPU always executes a task from its local DSQ.  A task is __dispatched__ to a DSQ. A non-local DSQ is __comsumed__  to transfer a task to the consuming CPU's local DSQ.
