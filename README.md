@@ -451,15 +451,15 @@ $ yay -S cmake ninja
 $ git clone https://github.com/llvm/llvm-project.git llvm-project
 $ mkdir -p llvm-project/build; cd llvm-project/build
 $ cmake \  
-	-G Ninja \  
-	-DLLVM_TARGETS_TO_BUILD="BPF;X86" \  
-	-DCMAKE_INSTALL_PREFIX="/$HOME/llvm/$(date +%Y%m%d)" \  
-	-DBUILD_SHARED_LIBS=OFF \  
-	-DLIBCLANG_BUILD_STATIC=ON \  
-	-DCMAKE_BUILD_TYPE=Release \  
-	-DLLVM_ENABLE_TERMINFO=OFF \  
-	-DLLVM_ENABLE_PROJECTS="clang;lld" \  
-	../llvm
+    -G Ninja \  
+    -DLLVM_TARGETS_TO_BUILD="BPF;X86" \  
+    -DCMAKE_INSTALL_PREFIX="/$HOME/llvm/$(date +%Y%m%d)" \  
+    -DBUILD_SHARED_LIBS=OFF \  
+    -DLIBCLANG_BUILD_STATIC=ON \  
+    -DCMAKE_BUILD_TYPE=Release \  
+    -DLLVM_ENABLE_TERMINFO=OFF \  
+    -DLLVM_ENABLE_PROJECTS="clang;lld" \  
+    ../llvm
 $ ninja install -j$(nproc)
 $ ln -sf /$HOME/llvm/$(date +%Y%m%d) /$HOME/llvm/latest
 ```
