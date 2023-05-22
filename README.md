@@ -448,10 +448,10 @@ git clone https://github.com/sched-ext/sched_ext
 #### 2. checkout and build the latest clang:
 ```shellsession
 $ yay -S cmake ninja
+$ mkdir ~/llvm
 $ git clone https://github.com/llvm/llvm-project.git llvm-project
 $ mkdir -p llvm-project/build; cd llvm-project/build
-$ cmake \  
-    -G Ninja \  
+$ cmake -G Ninja \  
     -DLLVM_TARGETS_TO_BUILD="BPF;X86" \  
     -DCMAKE_INSTALL_PREFIX="/$HOME/llvm/$(date +%Y%m%d)" \  
     -DBUILD_SHARED_LIBS=OFF \  
