@@ -209,181 +209,35 @@ A task is not tied to its `runqueue` while enqueued. This decouples CPU select
 	 * e.g. when @p is being dispatched to a remote CPU.
 	 */
 	void (*quiescent)(struct task_struct *p, u64 deq_flags);
-
-	/**
-	 * yield - Yield CPU
-	 * @from: yielding task
-	 * @to: optional yield target task
-	 *
-	 * If @to is NULL, @from is yielding the CPU to other runnable tasks.
-	 * The BPF scheduler should ensure that other available tasks are
-	 * dispatched before the yielding task. Return value is ignored in this
-	 * case.
-	 *
-	 * If @to is not-NULL, @from wants to yield the CPU to @to. If the bpf
-	 * scheduler can implement the request, return %true; otherwise, %false.
-	 */
-	bool (*yield)(struct task_struct *from, struct task_struct *to);
-
-	/**
-	 * core_sched_before - Task ordering for core-sched
-	 * @a: task A
-	 * @b: task B
-	 *
-	 * Used by core-sched to determine the ordering between two tasks. See
-	 * Documentation/admin-guide/hw-vuln/core-scheduling.rst for details on
-	 * core-sched.
-	 *
-	 * Both @a and @b are runnable and may or may not currently be queued on
-	 * the BPF scheduler. Should return %true if @a should run before @b.
-	 * %false if there's no required ordering or @b should run before @a.
-	 *
-	 * If not specified, the default is ordering them according to when they
-	 * became runnable.
-	 */
-	bool (*core_sched_before)(struct task_struct *a,struct task_struct *b);
-
-	/**
-	 * set_weight - Set task weight
-	 * @p: task to set weight for
-	 * @weight: new eight [1..10000]
-	 *
-	 * Update @p's weight to @weight.
-	 */
-	void (*set_weight)(struct task_struct *p, u32 weight);
-
-	/**
-	 * set_cpumask - Set CPU affinity
-	 * @p: task to set CPU affinity for
-	 * @cpumask: cpumask of cpus that @p can run on
-	 *
-	 * Update @p's CPU affinity to @cpumask.
-	 */
-	void (*set_cpumask)(struct task_struct *p, struct cpumask *cpumask);
-
-	/**
-	 * update_idle - Update the idle state of a CPU
-	 * @cpu: CPU to udpate the idle state for
-	 * @idle: whether entering or exiting the idle state
-	 *
-	 * This operation is called when @rq's CPU goes or leaves the idle
-	 * state. By default, implementing this operation disables the built-in
-	 * idle CPU tracking and the following helpers become unavailable:
-	 *
-	 * - scx_bpf_select_cpu_dfl()
-	 * - scx_bpf_test_and_clear_cpu_idle()
-	 * - scx_bpf_pick_idle_cpu()
-	 * - scx_bpf_any_idle_cpu()
-	 *
-	 * The user also must implement ops.select_cpu() as the default
-	 * implementation relies on scx_bpf_select_cpu_dfl().
-	 *
-	 * If you keep the built-in idle tracking, specify the
-	 * %SCX_OPS_KEEP_BUILTIN_IDLE flag.
-	 */
-	void (*update_idle)(s32 cpu, bool idle);
-
-	/**
-	 * cpu_acquire - A CPU is becoming available to the BPF scheduler
-	 * @cpu: The CPU being acquired by the BPF scheduler.
-	 * @args: Acquire arguments, see the struct definition.
-	 *
-	 * A CPU that was previously released from the BPF scheduler is now once
-	 * again under its control.
-	 */
-	void (*cpu_acquire)(s32 cpu, struct scx_cpu_acquire_args *args);
-
-	/**
-	 * cpu_release - A CPU is taken away from the BPF scheduler
-	 * @cpu: The CPU being released by the BPF scheduler.
-	 * @args: Release arguments, see the struct definition.
-	 *
-	 * The specified CPU is no longer under the control of the BPF
-	 * scheduler. This could be because it was preempted by a higher
-	 * priority sched_class, though there may be other reasons as well. The
-	 * caller should consult @args->reason to determine the cause.
-	 */
-	void (*cpu_release)(s32 cpu, struct scx_cpu_release_args *args);
-
-	/**
-	 * cpu_online - A CPU became online
-	 * @cpu: CPU which just came up
-	 *
-	 * @cpu just came online. @cpu doesn't call ops.enqueue() or run tasks
-	 * associated with other CPUs beforehand.
-	 */
-	void (*cpu_online)(s32 cpu);
-
-	/**
-	 * cpu_offline - A CPU is going offline
-	 * @cpu: CPU which is going offline
-	 *
-	 * @cpu is going offline. @cpu doesn't call ops.enqueue() or run tasks
-	 * associated with other CPUs afterwards.
-	 */
-	void (*cpu_offline)(s32 cpu);
-
-	/**
-	 * prep_enable - Prepare to enable BPF scheduling for a task
-	 * @p: task to prepare BPF scheduling for
-	 * @args: enable arguments, see the struct definition
-	 *
-	 * Either we're loading a BPF scheduler or a new task is being forked.
-	 * Prepare BPF scheduling for @p. This operation may block and can be
-	 * used for allocations.
-	 *
-	 * Return 0 for success, -errno for failure. An error return while
-	 * loading will abort loading of the BPF scheduler. During a fork, will
-	 * abort the specific fork.
-	 */
-	s32 (*prep_enable)(struct task_struct *p, struct scx_enable_args *args);
-
-	/**
-	 * enable - Enable BPF scheduling for a task
-	 * @p: task to enable BPF scheduling for
-	 * @args: enable arguments, see the struct definition
-	 *
-	 * Enable @p for BPF scheduling. @p is now in the cgroup specified for
-	 * the preceding prep_enable() and will start running soon.
-	 */
-	void (*enable)(struct task_struct *p, struct scx_enable_args *args);
-
-	/**
-	 * cancel_enable - Cancel prep_enable()
-	 * @p: task being canceled
-	 * @args: enable arguments, see the struct definition
-	 *
-	 * @p was prep_enable()'d but failed before reaching enable(). Undo the
-	 * preparation.
-	 */
-	void (*cancel_enable)(struct task_struct *p,
-			      struct scx_enable_args *args);
-
-	/**
-	 * disable - Disable BPF scheduling for a task
-	 * @p: task to disable BPF scheduling for
-	 *
-	 * @p is exiting, leaving SCX or the BPF scheduler is being unloaded.
-	 * Disable BPF scheduling for @p.
-	 */
-	void (*disable)(struct task_struct *p);
-	/*
-	 * All online ops must come before ops.init().
-	 */
-
-	/**
-	 * init - Initialize the BPF scheduler
-	 */
-	s32 (*init)(void);
-	/**
-	 * name - BPF scheduler's name
-	 *
-	 * Must be a non-zero valid BPF object name including only isalnum(),
-	 * '_' and '.' chars. Shows up in kernel.sched_ext_ops sysctl while the
-	 * BPF scheduler is enabled.
-	 */
-	char name[SCX_OPS_NAME_LEN];
 ```
+
+### kfuncs
+
+- `scx_bpf_switch_all()`: Switch all tasks into SCX
+- `scx_bpf_create_dsq(u64 dsq_id, s32 node)`: Create a custom DSQ
+	- dsq_id: DSQ id to create.
+	- node: NUMA node allocate from.
+- `scx_bpf_dispatch(struct task_struct *p, u64 dsq_id, u64 slice, u64 enqueue_flags)`: Dispatch a task into the FIFO queue of a DSQ 
+	- p: task_struct to dispatch
+	- dsq_id: DSQ to dispatch to
+	- slice: duration p can run for in __nsecs__
+	- enqueue_flags: `SCX_ENQ_*`
+- `scx_bpf_dispatch_vtime`
+- `scx_bpf_dispatch_nr_slots`
+- `scx_bpf_consume`
+- `scx_bpf_reenqueue_local`
+- `scx_bpf_kick_cpu`
+- `scx_bpf_dsq_nr_queued`
+- `scx_bpf_test_and_clear_cpu_idle`
+- `scx_bpf_pick_idle_cpu`
+- `scx_bpf_get_idle_cpumask`
+- `scx_bpf_get_idle_smtmask`
+- `scx_bpf_put_idle_cpumask`
+- `scx_bpf_error_bstr`
+- `scx_bpf_destroy_dsq`
+- `scx_bpf_task_running`
+- `scx_bpf_task_cpu`
+- `scx_bpf_task_cgroup`
 
 ### Writing a userspace application
 
