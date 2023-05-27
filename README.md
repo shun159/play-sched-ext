@@ -215,29 +215,71 @@ A task is not tied to its `runqueue` while enqueued. This decouples CPU select
 
 - `scx_bpf_switch_all()`: Switch all tasks into SCX
 - `scx_bpf_create_dsq(u64 dsq_id, s32 node)`: Create a custom DSQ
-	- dsq_id: DSQ id to create.
-	- node: NUMA node allocate from.
+	- Args:
+		- dsq_id: DSQ id to create.
+		- node: NUMA node allocate from.
+	- Returns:
+		- `s32`: return negative value if creation fails, otherwise 0.
 - `scx_bpf_dispatch(struct task_struct *p, u64 dsq_id, u64 slice, u64 enqueue_flags)`: Dispatch a task into the FIFO queue of a DSQ 
-	- p: task_struct to dispatch
-	- dsq_id: DSQ to dispatch to
-	- slice: duration p can run for in __nsecs__
-	- enqueue_flags: `SCX_ENQ_*`
-- `scx_bpf_dispatch_vtime`
-- `scx_bpf_dispatch_nr_slots`
-- `scx_bpf_consume`
-- `scx_bpf_reenqueue_local`
-- `scx_bpf_kick_cpu`
-- `scx_bpf_dsq_nr_queued`
-- `scx_bpf_test_and_clear_cpu_idle`
-- `scx_bpf_pick_idle_cpu`
-- `scx_bpf_get_idle_cpumask`
-- `scx_bpf_get_idle_smtmask`
-- `scx_bpf_put_idle_cpumask`
-- `scx_bpf_error_bstr`
-- `scx_bpf_destroy_dsq`
-- `scx_bpf_task_running`
-- `scx_bpf_task_cpu`
-- `scx_bpf_task_cgroup`
+	- Args:
+		- p: task_struct to dispatch
+		- dsq_id: DSQ to dispatch to
+		- slice: duration p can run for in __nsecs__
+		- enqueue_flags: `SCX_ENQ_*`
+- `scx_bpf_dispatch_vtime(struct task_struct *p, u64 dsq_id, u64 slice,u64 vtime, u64 enq_flags)`:  Dispatch a task into the vtime priority queue of a DSQ
+	- Args:
+		- p: task_struct to dispatch
+		- dsq_id: DSQ to dispatch to
+		- slice: duration p can run for in __nsecs__
+		- vtime: @p's ordering inside the vtime-sorted queue of the target DSQ
+		- enq_flags: `SCX_ENQ_*`
+- `scx_bpf_dispatch_nr_slots()`: Return the number of remaining dispatch slots
+	- Returns:
+		- `u32`: number of remaining dispatch slots.
+- `scx_bpf_consume(u64 dsq_id)`:  Transfer a task from a DSQ to the current CPU's local DSQ
+	- Args:
+		- dsq_id: DSQ to consume
+	- Returns:
+		- `bool`: `true` the consuming is succeeded, otherwise `false`.
+- `scx_bpf_reenqueue_local()`: Re-enqueue tasks on a local DSQ
+	- Rerurns:
+		- `u32` : number of re-enqueued tasks
+- `scx_bpf_kick_cpu(s32 cpu, u64 flags)`: Trigger reschedule on a CPU
+	- Args:
+		- cpu: cpu to kick
+		- flags: `SCX_KICK_*` flags
+- `scx_bpf_dsq_nr_queued(u64 dsq_id)`:  Return the number of queued tasks
+	- Args:
+		- dsq_id: id of the DSQ
+	- Returns:
+		- `s32`: number of queued tasks
+- `scx_bpf_test_and_clear_cpu_idle(s32 cpu)`: Test and clear @cpu's idle state
+	- Args:
+		- cpu: cpu to test and clear idle for
+	- Returns:
+		- `bool`:  `true` if cpu was idle and its idle state was successfully cleared. `false` otherwise.
+- `scx_bpf_pick_idle_cpu(const struct cpumask *cpu_allowed)`: Pick and claim an idle cpu
+	- Args:
+		- cpu_allowed: Allowed cpu mask
+	- Returns:
+		- `s32`: the picked idle cpu number on success. `-EBUSY` if no matching cpu was found.
+- `scx_bpf_get_idle_cpumask()`: Get a referenced kptr to the idle-tracking per-CPU cpumask.
+	- Returns:
+		- `const struct cpumask`: `NULL` if idle tracking is not enabled. 
+- `scx_bpf_get_idle_smtmask()`: Get a referenced kptr to the idle-tracking, per-physical-core cpumask. Can be used to determine if an entire physical core is free.
+- `scx_bpf_destroy_dsq(u64 dsq_id)`: Destroy a custom DSQ
+	- Args:
+		- dsq_id: DSQ to destroy
+- `scx_bpf_task_running(const struct task_struct *p)`: Is task currently running?
+	- Args:
+		- p: task of interest
+	- Returns:
+		- `bool`: true if the task running.
+- `scx_bpf_task_cpu(const struct task_struct *p)`: CPU a task is currently associated with
+	- Args:
+		- p: task of interest
+	- Returns:
+		- `s32`: CPU associated with the task.
 
 ### Writing a userspace application
 
