@@ -1,5 +1,5 @@
 [package]
-name = "usched"
+name = "scx_usched"
 version = "0.1.0"
 authors = ["Eishun Kondoh <dreamdiagnosis@gmail.com>"]
 edition = "2021"
